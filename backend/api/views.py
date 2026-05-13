@@ -1,15 +1,14 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Member
-from .serializers import MemberSerializer
+from .models import Member, Payment
+from .serializers import MemberSerializer, PaymentSerializer
 
 class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.all().order_by('-created_at')
     serializer_class = MemberSerializer
 
-    # Специальный метод для поиска по номеру карты (для CheckCard.tsx)
-    # Путь будет: GET /api/members/check_card/?no=ХХХ
+    # Фикс: Возвращаем метод поиска карты для страницы "Контроль"
     @action(detail=False, methods=['get'])
     def check_card(self, request):
         card_no = request.query_params.get('no')
@@ -22,3 +21,19 @@ class MemberViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         
         return Response({"error": "Клиент не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Логика создания платежа при регистрации
+    def perform_create(self, serializer):
+        member = serializer.save()
+        amount = self.request.data.get('amount_paid', 0)
+        
+        if amount and float(amount) > 0:
+            Payment.objects.create(
+                member=member,
+                amount=amount,
+                plan_name="Первичная регистрация"
+            )
+
+class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Payment.objects.all().order_by('-date_paid')
+    serializer_class = PaymentSerializer

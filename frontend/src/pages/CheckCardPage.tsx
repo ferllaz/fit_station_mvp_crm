@@ -1,75 +1,107 @@
-import React, { useState } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import api from '../api';
 import type { Member } from '../types';
-import { ShieldCheck, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, CreditCard, User, Calendar, Phone } from 'lucide-react';
 
 export default function CheckCardPage() {
   const [cardNo, setCardNo] = useState('');
   const [result, setResult] = useState<Member | null>(null);
-  const [error, setError] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleCheck = async (e: React.FormEvent) => {
+  const handleCheck = async (e: FormEvent) => {
     e.preventDefault();
-    setError(false);
+    if (!cardNo) return;
+
     try {
-      // Используем наш специальный action из Django
       const res = await api.get(`members/check_card/?no=${cardNo}`);
       setResult(res.data);
+      setStatus(res.data.days_left > 0 ? 'success' : 'error');
     } catch (err) {
       setResult(null);
-      setError(true);
+      setStatus('error');
     }
+    setCardNo(''); // Очищаем для следующего сканирования
   };
 
+  // Фокус на поле ввода всегда, чтобы можно было просто сканировать карту
+  useEffect(() => { inputRef.current?.focus(); }, [status]);
+
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <h1 style={styles.title}>Контроль доступа</h1>
-      
-      <form onSubmit={handleCheck} style={styles.searchBox}>
-        <input 
-          style={styles.input}
-          placeholder="Считайте штрих-код или введите номер..."
-          value={cardNo}
-          onChange={e => setCardNo(e.target.value)}
-          autoFocus
-        />
-        <button type="submit" style={styles.btn}>Проверить</button>
-      </form>
-
-      {error && (
-        <div style={styles.errorCard}>
-          <ShieldAlert size={48} color="#ef4444" />
-          <div style={{ marginLeft: '20px' }}>
-            <h2 style={{ margin: 0 }}>КАРТА НЕ НАЙДЕНА</h2>
-            <p style={{ opacity: 0.8 }}>Проверьте правильность номера или зарегистрируйте клиента.</p>
+    <div style={{ ...s.container, backgroundColor: status === 'success' ? '#064e3b' : status === 'error' ? '#7f1d1d' : '#0f172a' }}>
+      <div style={s.card}>
+        <h1 style={s.title}>Система контроля доступа</h1>
+        
+        <form onSubmit={handleCheck} style={s.form}>
+          <div style={s.inputWrapper}>
+            <CreditCard style={s.inputIcon} size={24} />
+            <input 
+              ref={inputRef}
+              style={s.input}
+              placeholder="Считайте карту клиента..."
+              value={cardNo}
+              onChange={e => setCardNo(e.target.value)}
+              autoFocus
+            />
           </div>
-        </div>
-      )}
+        </form>
 
-      {result && (
-        <div style={result.days_left > 0 ? styles.successCard : styles.expiredCard}>
-          {result.days_left > 0 ? <ShieldCheck size={48} /> : <ShieldAlert size={48} />}
-          <div style={{ marginLeft: '20px' }}>
-            <h2 style={{ margin: 0 }}>{result.full_name}</h2>
-            <p style={{ fontSize: '18px', margin: '5px 0' }}>
-              {result.days_left > 0 
-                ? `ДОСТУП РАЗРЕШЕН (Осталось ${result.days_left} дн.)` 
-                : 'АБОНЕМЕНТ ИСТЕК!'}
-            </p>
-            <small>Действует до: {result.expiry_date}</small>
+        {status === 'idle' && (
+          <div style={s.idleState}>
+            <div style={s.pulseIcon}><ShieldCheck size={80} opacity={0.2} /></div>
+            <p>Ожидание сканирования...</p>
           </div>
-        </div>
-      )}
+        )}
+
+        {result && status !== 'idle' && (
+          <div style={s.resultBox}>
+            <div style={s.avatar}>{result.full_name[0]}</div>
+            <h2 style={s.name}>{result.full_name}</h2>
+            
+            <div style={s.infoGrid}>
+              <div style={s.infoItem}><User size={16}/> {result.card_number}</div>
+              <div style={s.infoItem}><Phone size={16}/> {result.phone_number || 'Нет номера'}</div>
+              <div style={s.infoItem}><Calendar size={16}/> До: {result.expiry_date}</div>
+            </div>
+
+            <div style={{...s.statusBanner, backgroundColor: result.days_left > 0 ? '#10b981' : '#ef4444'}}>
+              {result.days_left > 0 ? <ShieldCheck size={32}/> : <ShieldAlert size={32}/>}
+              <div>
+                <div style={s.statusText}>{result.days_left > 0 ? 'ПРОХОД РАЗРЕШЕН' : 'ДОСТУП ЗАБЛОКИРОВАН'}</div>
+                <div style={s.daysText}>{result.days_left} дн. осталось</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!result && status === 'error' && (
+          <div style={s.resultBox}>
+            <ShieldAlert size={80} color="#ef4444" />
+            <h2 style={{color: '#ef4444'}}>КАРТА НЕ НАЙДЕНА</h2>
+            <p>Данная карта не зарегистрирована в системе</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-const styles = {
-  title: { textAlign: 'center' as const, marginBottom: '30px' },
-  searchBox: { display: 'flex', gap: '10px', marginBottom: '40px' },
-  input: { flex: 1, padding: '15px', borderRadius: '10px', border: '1px solid #334155', backgroundColor: '#1e293b', color: '#fff', fontSize: '18px' },
-  btn: { padding: '0 30px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  successCard: { display: 'flex', alignItems: 'center', padding: '30px', backgroundColor: '#064e3b', color: '#34d399', borderRadius: '15px', border: '2px solid #34d399' },
-  expiredCard: { display: 'flex', alignItems: 'center', padding: '30px', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: '15px', border: '2px solid #ef4444' },
-  errorCard: { display: 'flex', alignItems: 'center', padding: '30px', backgroundColor: '#1e293b', color: '#ef4444', borderRadius: '15px', border: '2px solid #444' },
+const s: { [key: string]: React.CSSProperties } = {
+  container: { height: '85vh', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.5s', borderRadius: '24px' },
+  card: { backgroundColor: '#1e293b', padding: '40px', borderRadius: '30px', width: '100%', maxWidth: '600px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' },
+  title: { fontSize: '14px', textTransform: 'uppercase', letterSpacing: '2px', color: '#94a3b8', marginBottom: '30px' },
+  form: { marginBottom: '40px' },
+  inputWrapper: { position: 'relative', display: 'flex', alignItems: 'center' },
+  inputIcon: { position: 'absolute', left: '15px', color: '#3b82f6' },
+  input: { width: '100%', padding: '20px 20px 20px 50px', borderRadius: '15px', border: '2px solid #334155', backgroundColor: '#0f172a', color: '#fff', fontSize: '18px', outline: 'none' },
+  idleState: { padding: '40px', color: '#475569' },
+  pulseIcon: { marginBottom: '20px', animation: 'pulse 2s infinite' },
+  resultBox: { animation: 'slideUp 0.4s ease-out' },
+  avatar: { width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#3b82f6', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold' },
+  name: { fontSize: '28px', margin: '0 0 20px 0' },
+  infoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '30px', fontSize: '13px', color: '#94a3b8' },
+  infoItem: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' },
+  statusBanner: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', padding: '20px', borderRadius: '15px', color: '#fff' },
+  statusText: { fontSize: '20px', fontWeight: '900' },
+  daysText: { fontSize: '14px', opacity: 0.8 }
 };

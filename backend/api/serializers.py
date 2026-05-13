@@ -1,24 +1,19 @@
 from rest_framework import serializers
-from .models import Member
+from .models import Member, Payment
+
+class PaymentSerializer(serializers.ModelSerializer):
+    member_name = serializers.ReadOnlyField(source='member.full_name')
+
+    class Meta:
+        model = Payment
+        fields = ['id', 'member', 'member_name', 'amount', 'plan_name', 'date_paid']
 
 class MemberSerializer(serializers.ModelSerializer):
-    # Указываем, что days_left — это поле только для чтения (вычисляется в модели)
     days_left = serializers.ReadOnlyField()
 
     class Meta:
         model = Member
         fields = [
-            'id', 
-            'card_number', 
-            'full_name', 
-            'expiry_date', 
-            'days_left', 
-            'created_at'
+            'id', 'card_number', 'full_name', 'phone_number', 
+            'expiry_date', 'amount_paid', 'days_left', 'created_at'
         ]
-
-    # Валидация: директор оценит, если система не даст создать карту с датой в прошлом
-    def validate_expiry_date(self, value):
-        from datetime import date
-        if value < date.today():
-            raise serializers.ValidationError("Нельзя зарегистрировать абонемент, который уже истек!")
-        return value
