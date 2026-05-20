@@ -6,5 +6,8 @@ export interface Member {
   expiry_date: string;
   days_left: number; // Это поле считает Django
   amount_paid?: number;
+  is_frozen?: boolean;
+  freeze_until?: string | null;
+  status_color?: string; // 'red' | 'yellow' | 'blue' | 'green'
   created_at: string;
 }

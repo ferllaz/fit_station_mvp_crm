@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 
@@ -30,7 +31,7 @@ export default function AddMember() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.amount_paid) return alert("Выберите тарифный план!");
     

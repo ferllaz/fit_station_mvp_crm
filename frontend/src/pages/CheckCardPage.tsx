@@ -6,7 +6,7 @@ import { ShieldCheck, ShieldAlert, CreditCard, User, Calendar, Phone } from 'luc
 export default function CheckCardPage() {
   const [cardNo, setCardNo] = useState('');
   const [result, setResult] = useState<Member | null>(null);
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'success' | 'frozen' | 'error'>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleCheck = async (e: FormEvent) => {
@@ -16,26 +16,28 @@ export default function CheckCardPage() {
     try {
       const res = await api.get(`members/check_card/?no=${cardNo}`);
       setResult(res.data);
-      setStatus(res.data.days_left > 0 ? 'success' : 'error');
+      setStatus(res.data.is_frozen ? 'frozen' : res.data.days_left > 0 ? 'success' : 'error');
     } catch (err) {
       setResult(null);
       setStatus('error');
     }
-    setCardNo(''); // Очищаем для следующего сканирования
+
+    setCardNo('');
   };
 
-  // Фокус на поле ввода всегда, чтобы можно было просто сканировать карту
-  useEffect(() => { inputRef.current?.focus(); }, [status]);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [status]);
 
   return (
-    <div style={{ ...s.container, backgroundColor: status === 'success' ? '#064e3b' : status === 'error' ? '#7f1d1d' : '#0f172a' }}>
+    <div style={{ ...s.container, backgroundColor: getBackgroundColor(status) }}>
       <div style={s.card}>
         <h1 style={s.title}>Система контроля доступа</h1>
-        
+
         <form onSubmit={handleCheck} style={s.form}>
           <div style={s.inputWrapper}>
             <CreditCard style={s.inputIcon} size={24} />
-            <input 
+            <input
               ref={inputRef}
               style={s.input}
               placeholder="Считайте карту клиента..."
@@ -57,18 +59,25 @@ export default function CheckCardPage() {
           <div style={s.resultBox}>
             <div style={s.avatar}>{result.full_name[0]}</div>
             <h2 style={s.name}>{result.full_name}</h2>
-            
+
             <div style={s.infoGrid}>
-              <div style={s.infoItem}><User size={16}/> {result.card_number}</div>
-              <div style={s.infoItem}><Phone size={16}/> {result.phone_number || 'Нет номера'}</div>
-              <div style={s.infoItem}><Calendar size={16}/> До: {result.expiry_date}</div>
+              <div style={s.infoItem}><User size={16} /> {result.card_number}</div>
+              <div style={s.infoItem}><Phone size={16} /> {result.phone_number || 'Нет номера'}</div>
+              <div style={s.infoItem}>
+                <Calendar size={16} />
+                {result.is_frozen ? `Заморожен до: ${result.freeze_until || 'дата не указана'}` : `До: ${result.expiry_date}`}
+              </div>
             </div>
 
-            <div style={{...s.statusBanner, backgroundColor: result.days_left > 0 ? '#10b981' : '#ef4444'}}>
-              {result.days_left > 0 ? <ShieldCheck size={32}/> : <ShieldAlert size={32}/>}
+            <div style={{ ...s.statusBanner, backgroundColor: getBannerColor(result) }}>
+              {result.days_left > 0 && !result.is_frozen ? <ShieldCheck size={32} /> : <ShieldAlert size={32} />}
               <div>
-                <div style={s.statusText}>{result.days_left > 0 ? 'ПРОХОД РАЗРЕШЕН' : 'ДОСТУП ЗАБЛОКИРОВАН'}</div>
-                <div style={s.daysText}>{result.days_left} дн. осталось</div>
+                <div style={s.statusText}>
+                  {result.is_frozen ? 'АБОНЕМЕНТ ЗАМОРОЖЕН' : result.days_left > 0 ? 'ПРОХОД РАЗРЕШЕН' : 'ДОСТУП ЗАБЛОКИРОВАН'}
+                </div>
+                <div style={s.daysText}>
+                  {result.is_frozen ? `Заморожен до ${result.freeze_until || 'дата не указана'}` : `${result.days_left} дн. осталось`}
+                </div>
               </div>
             </div>
           </div>
@@ -77,13 +86,26 @@ export default function CheckCardPage() {
         {!result && status === 'error' && (
           <div style={s.resultBox}>
             <ShieldAlert size={80} color="#ef4444" />
-            <h2 style={{color: '#ef4444'}}>КАРТА НЕ НАЙДЕНА</h2>
+            <h2 style={{ color: '#ef4444' }}>КАРТА НЕ НАЙДЕНА</h2>
             <p>Данная карта не зарегистрирована в системе</p>
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function getBackgroundColor(status: 'idle' | 'success' | 'frozen' | 'error') {
+  if (status === 'success') return '#064e3b';
+  if (status === 'frozen') return '#1e3a8a';
+  if (status === 'error') return '#7f1d1d';
+  return '#0f172a';
+}
+
+function getBannerColor(member: Member) {
+  if (member.is_frozen) return '#2563eb';
+  if (member.days_left > 0) return '#10b981';
+  return '#ef4444';
 }
 
 const s: { [key: string]: React.CSSProperties } = {

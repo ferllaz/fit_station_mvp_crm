@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import api from '../api';
 import type { Member } from '../types';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
@@ -8,7 +9,7 @@ export default function CheckCard() {
   const [result, setResult] = useState<Member | null>(null);
   const [error, setError] = useState(false);
 
-  const handleCheck = async (e: React.FormEvent) => {
+  const handleCheck = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(false);
     try {

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 
@@ -6,7 +7,7 @@ export default function AddMemberPage() {
   const [form, setForm] = useState({ card_number: '', full_name: '', expiry_date: '' });
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
       await api.post('members/', form);
