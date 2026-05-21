@@ -11,3 +11,14 @@ export interface Member {
   status_color?: string; // 'red' | 'yellow' | 'blue' | 'green'
   created_at: string;
 }
+
+export interface Trainer {
+  id: number;
+  full_name: string;
+  specialty: string;
+  photo_url: string;
+  is_active: boolean;
+  notes: string;
+  clients_count?: number;
+  created_at: string;
+}

@@ -1,10 +1,18 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Member, Payment
-from .serializers import MemberSerializer, PaymentSerializer
+from .models import Member, Payment, Trainer
+from .serializers import MemberSerializer, PaymentSerializer, TrainerSerializer
 from datetime import timedelta, date
-from django.db.models import Case, When, Value, IntegerField
+from django.db.models import Case, Count, IntegerField, Value, When
+
+class TrainerViewSet(viewsets.ModelViewSet):
+    serializer_class = TrainerSerializer
+
+    def get_queryset(self):
+        return Trainer.objects.annotate(
+            clients_count=Count('payments__member', distinct=True)
+        ).order_by('-is_active', 'full_name')
 
 class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.all().order_by('-created_at')
@@ -121,6 +129,10 @@ class MemberViewSet(viewsets.ModelViewSet):
         days = int(request.data.get('days', 30))
         amount = float(request.data.get('amount', 25000))
         plan_name = request.data.get('plan_name', f"Продление ({days} дн.)")
+        trainer = None
+        trainer_id = request.data.get('trainer')
+        if trainer_id:
+            trainer = Trainer.objects.filter(id=trainer_id).first()
 
         today = date.today()
         if member.is_frozen:
@@ -134,14 +146,32 @@ class MemberViewSet(viewsets.ModelViewSet):
         member.amount_paid = float(member.amount_paid) + amount
         member.save()
 
-        Payment.objects.create(member=member, amount=amount, plan_name=plan_name)
+        Payment.objects.create(
+            member=member,
+            trainer=trainer,
+            trainer_name=trainer.full_name if trainer else request.data.get('trainer_name', ''),
+            trainer_photo_url=trainer.photo_url if trainer else request.data.get('trainer_photo_url', ''),
+            amount=amount,
+            plan_name=plan_name
+        )
         return Response({"status": "success", "message": f"Абонемент продлен до {member.expiry_date}"})
 
     def perform_create(self, serializer):
         member = serializer.save()
         amount = self.request.data.get('amount_paid', 0)
         if amount and float(amount) > 0:
-            Payment.objects.create(member=member, amount=amount, plan_name="Первичная регистрация")
+            trainer = None
+            trainer_id = self.request.data.get('trainer')
+            if trainer_id:
+                trainer = Trainer.objects.filter(id=trainer_id).first()
+            Payment.objects.create(
+                member=member,
+                trainer=trainer,
+                trainer_name=trainer.full_name if trainer else self.request.data.get('trainer_name', ''),
+                trainer_photo_url=trainer.photo_url if trainer else self.request.data.get('trainer_photo_url', ''),
+                amount=amount,
+                plan_name=self.request.data.get('plan_name', "Первичная регистрация")
+            )
 
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Payment.objects.all().order_by('-date_paid')

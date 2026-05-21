@@ -5,7 +5,8 @@ import MembersListPage from './pages/MembersListPage';
 import AddMemberPage from './pages/AddMember';
 import CheckCardPage from './pages/CheckCardPage';
 import PaymentsPage from './pages/PaymentsPage';
-import { LayoutDashboard, Users, UserPlus, ShieldCheck, Banknote, Bell } from 'lucide-react';
+import TrainersPage from './pages/TrainersPage';
+import { LayoutDashboard, Users, UserPlus, ShieldCheck, Banknote, Bell, Dumbbell } from 'lucide-react';
 import api from './api';
 
 type Notification = {
@@ -26,6 +27,7 @@ export default function App() {
             <MenuLink to="/" icon={<LayoutDashboard size={20} />} label="Дашборд" />
             <MenuLink to="/check" icon={<ShieldCheck size={20} />} label="Контроль" />
             <MenuLink to="/list" icon={<Users size={20} />} label="Клиенты" />
+            <MenuLink to="/trainers" icon={<Dumbbell size={20} />} label="Тренера" />
             <MenuLink to="/add" icon={<UserPlus size={20} />} label="Регистрация" />
             <MenuLink to="/payments" icon={<Banknote size={20} />} label="Касса / История" />
           </div>
@@ -38,6 +40,7 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/check" element={<CheckCardPage />} />
             <Route path="/list" element={<MembersListPage />} />
+            <Route path="/trainers" element={<TrainersPage />} />
             <Route path="/add" element={<AddMemberPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
           </Routes>

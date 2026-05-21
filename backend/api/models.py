@@ -1,6 +1,20 @@
 from django.db import models
 from datetime import date
 
+class Trainer(models.Model):
+    full_name = models.CharField("ФИО", max_length=100)
+    specialty = models.CharField("Специализация", max_length=120, blank=True, default="")
+    photo_url = models.URLField("Фото", max_length=500, blank=True, default="")
+    is_active = models.BooleanField("Активен", default=True)
+    notes = models.TextField("Заметки", blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_active', 'full_name']
+
+    def __str__(self):
+        return self.full_name
+
 class Member(models.Model):
     card_number = models.CharField("Номер карты", max_length=20, unique=True)
     full_name = models.CharField("ФИО", max_length=100)
@@ -50,6 +64,9 @@ class Member(models.Model):
 
 class Payment(models.Model):
     member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='payments')
+    trainer = models.ForeignKey(Trainer, on_delete=models.SET_NULL, related_name='payments', blank=True, null=True)
+    trainer_name = models.CharField("Тренер", max_length=100, blank=True, default="")
+    trainer_photo_url = models.URLField("Фото тренера", max_length=500, blank=True, default="")
     amount = models.DecimalField("Сумма", max_digits=10, decimal_places=2)
     plan_name = models.CharField("Тариф/Операция", max_length=100)
     date_paid = models.DateTimeField(auto_now_add=True)
